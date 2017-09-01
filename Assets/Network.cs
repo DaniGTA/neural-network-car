@@ -119,6 +119,7 @@ public class Network {
 
 			//after all output neurons have their values summed up, apply the activation function and save the value into new inputs
 			for (int l = 0; l < outputs.Length; l++) {
+				//this MIGHT be considered a little of a cheat, but I'm a beginner. So i hope you don't mind that multiplication by 5
 				inputs [l] = sigmoid(outputs [l] * 5);
 				//Debug.Log ("i " + inputs [l]);
 			}
