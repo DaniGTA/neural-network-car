@@ -10,20 +10,24 @@ public class HUDController : MonoBehaviour {
 	Text engine;
 	Text top;
 
+	neuralController controller;
+
 	// Use this for initialization
 	void Start () {
 		generation = GetComponent<Text> ();
-		population = GameObject.Find ("Population").GetComponent<Text> ();
+		population = GameObject.Find ("population").GetComponent<Text> ();
 		engine = GameObject.Find ("speed").GetComponent<Text> ();
 		top = GameObject.Find ("top").GetComponent<Text>();
+
+		controller = GameObject.Find ("Flyer").GetComponent<neuralController> ();
 	}
 	
 	// Update is called once per frame
 	void Update () {
-		generation.text = "Generation " + (neuralController.generation+1);
-		population.text = "Population " + (neuralController.currentNeuralNetwork+1)  + " / " + neuralController.staticPopulation;;
-		engine.text = "Engine " + ((float)neuralController.motor).ToString();
-		top.text = "Top " + neuralController.bestDistance;
+		generation.text = "front " + controller.frontForce;
+		population.text = "back " + controller.backForce;
+		engine.text = "left " + controller.leftForce;
+		top.text = "right " + controller.rightForce;
 
 		
 	}

@@ -11,15 +11,13 @@ public enum FitnessMeasure{
 
 public class neuralController : MonoBehaviour {
 
-	public int sensorLenght;
 	Rigidbody rigidbody;
-
+	Rigidbody front, back, left, right;
 
 	public FitnessMeasure fitnessMeasure;
 
-	Vector3 forward;
-	Vector3 right;
-	Vector3 left;
+
+	bool isColliding;
 
     public int timeScale;
 
@@ -27,14 +25,15 @@ public class neuralController : MonoBehaviour {
 	public static int staticPopulation;
 
     public double driveTime = 0;
-	public static double steering;
-	public static double braking;
-	public static double motor;
 
+	public float frontForce, backForce, leftForce, rightForce;
+
+	public static int mutationRateStatic;
+	public int mutationRate;
 	public static int generation = 0;
 	public double [] points;
 	public double [] results;
-	double [] sensors;
+	public double [] sensors;
 	public static int currentNeuralNetwork = 0;
 
 	public static float bestDistance = 0;
@@ -45,26 +44,36 @@ public class neuralController : MonoBehaviour {
 
 	Vector3 position;
 
+	void mutationUpdate()
+	{
+		mutationRateStatic = mutationRate;
+		//Debug.Log ("updated!");
+	}
+
     // Use this for initialization
     void Start()
     {
-		int[] parameters = { 3, 5, 2 };
+		InvokeRepeating ("mutationUpdate", 1, 1);
+
+		int[] parameters = { 5, 7, 2 };
 		staticPopulation = population;
 
         Time.timeScale = timeScale;
 
         Debug.Log("Generation " + generation);
-        rigidbody = GetComponent<Rigidbody>();
+
+		rigidbody = GetComponent<Rigidbody>();
+		front = GameObject.Find ("Front").GetComponent<Rigidbody> ();
+		back = GameObject.Find ("Back").GetComponent<Rigidbody> ();
+		left = GameObject.Find ("Left").GetComponent<Rigidbody> ();
+		right = GameObject.Find ("Right").GetComponent<Rigidbody> ();
 
         results = new double[2];
         points = new double[population];
-        sensors = new double[3];
+        sensors = new double[5];
 
 
-		//default vector values
-        forward = Vector3.forward * 2;
-        right = new Vector3(0.4f, 0, 0.7f);
-        left = new Vector3(-0.4f, 0, 0.7f);
+	
        
         position = transform.position;
         networks = new Network[population];
@@ -77,35 +86,63 @@ public class neuralController : MonoBehaviour {
 
     }
 
+
 	void FixedUpdate()
 	{
-		sensors [0] = getSensor (left);
-		sensors [1] = getSensor (forward);
-		sensors [2] = getSensor (right);
-
-
-		results = networks[currentNeuralNetwork].process(sensors);
-		steering =(double) results [0];
-		motor = (double) results [1];
-
-		driveTime += Time.deltaTime;
-
-		points[currentNeuralNetwork] += Vector3.Distance(position, transform.position);
-		position = transform.position;
-
+		
 	}
 	
 	// Update is called once per frame
 	void Update () {
-        
-		Time.timeScale = timeScale;
-        
-		//check if the network is moving
-		if(driveTime > 3 && rigidbody.velocity.magnitude<0.005)
-        {
-			//Debug.Log ("This one stands still!");
-            OnCollisionEnter(null);
-        }
+		
+
+		driveTime += Time.deltaTime;
+
+		isColliding = false;
+
+
+		if (transform.position.y > 5)
+			OnCollisionEnter (null);
+
+
+
+		//20 should be maximum force
+		sensors[0] = transform.position.y / 5.0f;
+
+
+		if (transform.eulerAngles.x < 180) {
+		
+			sensors [1] = transform.eulerAngles.x / 90.0f;
+			sensors [2] = 0;
+		
+		} else {
+			sensors [2] = -(transform.eulerAngles.x -360 ) /90.0f;
+			sensors [1] = 0;
+		}
+
+		//distance to front
+		if (transform.position.x > 0) {
+			//Debug.Log ("!!");
+			//Debug.Log(transform.position.x * 10000000);
+			sensors [3] = transform.position.x * 2500000;
+			sensors [4] = 0;
+		} else {
+			//Debug.Log ("??");
+			sensors [4] = -(transform.position.x * 2500000);
+			sensors [3] = 0;
+		}
+
+		//Debug.Log (sensors [0]);
+		results = networks[currentNeuralNetwork].process(sensors);
+
+		frontForce = (float)results [0] * 30;
+		backForce = (float)results [1] * 30;
+
+		front.AddRelativeForce (new Vector3(0,frontForce));
+		right.AddRelativeForce (new Vector3(0,rightForce));
+		left.AddRelativeForce (new Vector3(0,leftForce));
+		back.AddRelativeForce (new Vector3(0,backForce));
+
 
 	}
 
@@ -113,21 +150,17 @@ public class neuralController : MonoBehaviour {
 	//game over, friend :/
 	void OnCollisionEnter (Collision col)
 	{
-		//Debug.Log ("end!");
-        resetCarPosition();
+		
 
-		switch(fitnessMeasure)
-		{
-		case FitnessMeasure.distance2byTime:
-			points [currentNeuralNetwork] *= points [currentNeuralNetwork];
-			points [currentNeuralNetwork] /= driveTime;
-			break;
-		case FitnessMeasure.distanceByTime:
-			points [currentNeuralNetwork] /= driveTime;
-			break;
-		default:
-			break;
-		}
+
+		if(isColliding) return;
+		isColliding = true;
+
+		resetCarPosition();
+
+
+		points [currentNeuralNetwork] = driveTime;
+		
 
 		driveTime = 0;
 
@@ -207,31 +240,14 @@ public class neuralController : MonoBehaviour {
     void resetCarPosition()
     {
         rigidbody.velocity = Vector3.zero;
-        transform.position = new Vector3(0, 1, 0);
+        transform.position = new Vector3(0, 3, 0);
         transform.rotation = new Quaternion(0, 0, 0, 0);
+		rigidbody.angularVelocity = new Vector3 (0, 0, 0);
 
     }
 
 
-		
 
-	double getSensor(Vector3 direction)
-	{
-		Vector3 fwd = transform.TransformDirection(direction);
-
-		if (Physics.Raycast (transform.position, fwd, out hit)) {
-			if (hit.distance < sensorLenght) {
-				Debug.DrawRay (transform.position, fwd * sensorLenght, Color.red, 0, true);
-				return 1f - hit.distance / 15f;
-			} else {
-				Debug.DrawRay (transform.position, fwd * sensorLenght, Color.green, 0, true);
-			}
-		}
-		else
-			Debug.DrawRay(transform.position, fwd * sensorLenght, Color.green, 0, true);
-
-		return 0;
-	}
 
 
 }

@@ -45,12 +45,14 @@ public class Network {
 			}
 		}
 
+		for (int i = 0; i < neuralController.mutationRateStatic; i++) {
+			//Debug.Log ("mutating!");
+			int mutationLayer = Random.Range (0, weights.Length);
+			int mutationLeft = Random.Range (0, weights [mutationLayer].Length);
+			int mutationRight = Random.Range (0, weights [mutationLayer] [mutationLeft].Length);
 
-		int mutationLayer = Random.Range(0, weights.Length);
-		int mutationLeft  = Random.Range(0, weights[mutationLayer].Length);
-		int mutationRight = Random.Range(0, weights[mutationLayer][mutationLeft].Length);
-
-		weights [mutationLayer] [mutationLeft] [mutationRight] = getRandomWeight ();
+			weights [mutationLayer] [mutationLeft] [mutationRight] = getRandomWeight ();
+		}
 		//Debug.Log (mutationLayer + " " + mutationLeft + " " + mutationRight);
 	}
 			
